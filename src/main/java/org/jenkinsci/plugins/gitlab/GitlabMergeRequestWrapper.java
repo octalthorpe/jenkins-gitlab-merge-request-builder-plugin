@@ -1,5 +1,9 @@
 package org.jenkinsci.plugins.gitlab;
 
+import java.util.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Comparator;
@@ -83,7 +87,7 @@ public class GitlabMergeRequestWrapper {
         }
         if (isAllowedByTargetBranchRegex(_targetBranch)) {
             _logger.log(Level.INFO, "The target regex matches the target branch {" + _targetBranch + "}. Source branch {" + _sourceBranch + "}");
-            _shouldRun = true;
+            //_shouldRun = true;
         } else {
             _logger.log(Level.INFO, "The target regex did not match the target branch {" + _targetBranch + "}. Not triggering this job. Source branch {" + _sourceBranch + "}");
             return;
@@ -91,6 +95,7 @@ public class GitlabMergeRequestWrapper {
         try {
             GitlabAPI api = _builder.getGitlab().get();
             GitlabNote lastJenkinsNote = getJenkinsNote(gitlabMergeRequest, api);
+            GitlabNote lastRebuildNote = getRebuildNote(gitlabMergeRequest, api);
             GitlabCommit latestCommit = getLatestCommit(gitlabMergeRequest, api);
 
             if (lastJenkinsNote == null) {
@@ -99,6 +104,20 @@ public class GitlabMergeRequestWrapper {
             } else if (latestCommit == null) {
                 _logger.log(Level.SEVERE, "Failed to determine the lastest commit for merge request {" + gitlabMergeRequest.getId() + "}. This might be caused by a stalled MR in gitlab.");
                 return;
+            } else if (lastRebuildNote != null ) {
+                /* Check if there is a rebuild note after the last jenkins note */
+                if ( lastJenkinsNote != null ) {
+                    Date lastRebuildNoteDate = lastRebuildNote.getCreatedAt();
+                    Date lastJenkinsNoteDate = lastJenkinsNote.getCreatedAt();
+                    _logger.info("RebuildNoteDate:" + lastRebuildNoteDate);
+                    _logger.info("JenkinsNoteDate:" + lastJenkinsNoteDate);
+                    if (lastRebuildNoteDate.after(lastJenkinsNoteDate)) {
+                        _logger.info("Rebuild After Jenkins Note Date Compare: " + lastRebuildNoteDate.after(lastJenkinsNoteDate));
+                        _shouldRun = true;
+                    } else {
+                        _logger.info("Rebuild After Jenkins Note Date Compare: " + lastRebuildNoteDate.after(lastJenkinsNoteDate));
+                    }
+                }
             } else {
                 _logger.info("Latest note from Jenkins: " + lastJenkinsNote.getId().toString());
                 _shouldRun = latestCommitIsNotReached(latestCommit);
@@ -177,6 +196,29 @@ public class GitlabMergeRequestWrapper {
             }
         }
         return lastJenkinsNote;
+    }
+
+    private GitlabNote getRebuildNote(GitlabMergeRequest gitlabMergeRequest, GitlabAPI api) throws IOException {
+        List<GitlabNote> notes = api.getAllNotes(gitlabMergeRequest);
+        Pattern rebuild_pattern = Pattern.compile(_builder.getRebuildTriggerRegEx());
+        GitlabNote lastRebuildNote = null;
+
+        if (!notes.isEmpty()) {
+            for (GitlabNote note : notes) {
+                String notebody = note.getBody();
+                if (rebuild_pattern.matcher(notebody).matches()) {
+                    _logger.info("Matched Rebuild Comment Date:" + note.getCreatedAt());
+                    if (lastRebuildNote != null) {
+                        if (note.getCreatedAt().after(lastRebuildNote.getCreatedAt())) {
+                            lastRebuildNote = note;
+                        }
+                    } else {
+                        lastRebuildNote = note;
+                    }
+                }
+            }    
+        }
+        return lastRebuildNote;
     }
 
     private String normalizeUsername(String username) {

@@ -139,6 +139,7 @@ public final class GitlabBuildTrigger extends Trigger<AbstractProject<?, ?>> {
         private String _botApiToken;
         private String _cron = "*/5 * * * *";
         private boolean _enableBuildTriggeredMessage = true;
+        private String _rebuildTriggerRegEx = ".*rebuild this please.*";
         private String _successMessage = "Build finished.  Tests PASSED.";
         private String _unstableMessage = "Build finished.  Tests FAILED.";
         private String _failureMessage = "Build finished.  Tests FAILED.";
@@ -171,6 +172,7 @@ public final class GitlabBuildTrigger extends Trigger<AbstractProject<?, ?>> {
             _gitlabHostUrl = formData.getString("gitlabHostUrl");
             _cron = formData.getString("cron");
             _enableBuildTriggeredMessage = formData.getBoolean("enableBuildTriggeredMessage");
+            _rebuildTriggerRegEx = formData.getString("rebuildTriggerRegEx");
             _successMessage = formData.getString("successMessage");
             _unstableMessage = formData.getString("unstableMessage");
             _failureMessage = formData.getString("failureMessage");
@@ -272,6 +274,10 @@ public final class GitlabBuildTrigger extends Trigger<AbstractProject<?, ?>> {
 
         public String getBotUsername() {
             return _botUsername;
+        }
+
+        public String getRebuildTriggerRegEx() {
+            return _rebuildTriggerRegEx;
         }
 
     }

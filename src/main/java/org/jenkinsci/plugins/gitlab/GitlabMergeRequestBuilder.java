@@ -2,6 +2,8 @@ package org.jenkinsci.plugins.gitlab;
 
 import java.util.Map;
 import hudson.model.AbstractProject;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class GitlabMergeRequestBuilder {
 
@@ -71,6 +73,14 @@ public class GitlabMergeRequestBuilder {
             return _trigger.getDescriptor().isEnableBuildTriggeredMessage();
         } else {
             return GitlabBuildTrigger.DESCRIPTOR.isEnableBuildTriggeredMessage();
+        }
+    }
+
+    public String getRebuildTriggerRegEx() {
+        if (_trigger != null) {
+            return _trigger.getDescriptor().getRebuildTriggerRegEx();
+        } else {
+            return GitlabBuildTrigger.DESCRIPTOR.getRebuildTriggerRegEx();
         }
     }
 }
